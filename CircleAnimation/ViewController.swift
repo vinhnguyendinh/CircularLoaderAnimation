@@ -10,55 +10,77 @@ import UIKit
 
 class ViewController: UIViewController {
 
-    let circleLayer = CAShapeLayer()
+    var circleLayer: CAShapeLayer!
+    var trackerLayer: CAShapeLayer!
+    var shimmerLayer: CAShapeLayer!
 
     let percentageLabel: UILabel = {
         let label = UILabel()
-        label.text = "100%"
+        label.text = "Start"
+        label.textColor = .white
+        label.font = UIFont.boldSystemFont(ofSize: 30)
         label.textAlignment = .center
-        label.font = UIFont.systemFont(ofSize: 30)
         return label
     }()
     
-    fileprivate func drawCircleBackground(_ circlePath: UIBezierPath, _ centerPoint: CGPoint) {
-        let circleBackgroundLayer = CAShapeLayer()
-        
-        circleBackgroundLayer.path = circlePath.cgPath
-        circleBackgroundLayer.strokeColor = UIColor.lightGray.cgColor
-        circleBackgroundLayer.lineWidth = 10
-        circleBackgroundLayer.position = centerPoint
-        circleBackgroundLayer.transform = CATransform3DMakeRotation(-CGFloat.pi / 2, 0, 0, 1)
-        circleBackgroundLayer.fillColor = UIColor.clear.cgColor
-        
-        self.view.layer.addSublayer(circleBackgroundLayer)
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return .lightContent
     }
     
-    fileprivate func drawCircleAnimation(_ circlePath: UIBezierPath, _ centerPoint: CGPoint) {
-        circleLayer.path = circlePath.cgPath
-        circleLayer.strokeColor = UIColor.red.cgColor
-        circleLayer.lineWidth = 10
-        circleLayer.fillColor = UIColor.clear.cgColor
-        circleLayer.strokeEnd = 0
-        circleLayer.lineCap = kCALineCapRound
-        circleLayer.position = centerPoint
-        circleLayer.transform = CATransform3DMakeRotation(-CGFloat.pi / 2, 0, 0, 1)
+    fileprivate func createCircleShapeLayer(strokeColor: UIColor, fillColor: UIColor) -> CAShapeLayer {
+        let shapeLayer = CAShapeLayer()
         
-        self.view.layer.addSublayer(circleLayer)
-        self.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap)))
+        let centerPoint = view.center
+        let circlePath = UIBezierPath(arcCenter: .zero, radius: 120, startAngle: 0, endAngle: 2*CGFloat.pi, clockwise: true)
+        shapeLayer.path = circlePath.cgPath
+        shapeLayer.strokeColor = strokeColor.cgColor
+        shapeLayer.fillColor = fillColor.cgColor
+        shapeLayer.lineWidth = 20
+        shapeLayer.position = centerPoint
+        shapeLayer.transform = CATransform3DMakeRotation(-CGFloat.pi / 2, 0, 0, 1)
+        
+        return shapeLayer
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        let centerPoint = view.center
-        let circlePath = UIBezierPath(arcCenter: .zero, radius: 100, startAngle: 0, endAngle: 2*CGFloat.pi, clockwise: true)
+        view.backgroundColor = .black
         
-        drawCircleBackground(circlePath, centerPoint)
+        shimmerLayer = createCircleShapeLayer(strokeColor: .clear, fillColor: UIColor(red: 255/255, green: 138/255, blue: 128/255, alpha: 0.8))
+        view.layer.addSublayer(shimmerLayer)
+        animationForShimmerLayer()
         
-        drawCircleAnimation(circlePath, centerPoint)
+        trackerLayer = createCircleShapeLayer(strokeColor: UIColor(red: 255/255, green: 205/255, blue: 210/255, alpha: 1), fillColor: .clear)
+        view.layer.addSublayer(trackerLayer)
+        
+        circleLayer = createCircleShapeLayer(strokeColor: UIColor(red: 213/255, green: 0/255, blue: 0/255, alpha: 1), fillColor: .black)
+        circleLayer.strokeEnd = 0
+        self.view.layer.addSublayer(circleLayer)
+        self.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap)))
         
         self.percentageLabel.frame = CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height)
         self.view.addSubview(percentageLabel)
+        
+        setupNotification()
+    }
+    
+    @objc fileprivate func handleWhenAppActive() {
+        animationForShimmerLayer()
+    }
+    
+    fileprivate func setupNotification() {
+        NotificationCenter.default.addObserver(self, selector: #selector(handleWhenAppActive), name: .UIApplicationDidBecomeActive, object: nil)
+    }
+    
+    fileprivate func animationForShimmerLayer() {
+        let animation = CABasicAnimation(keyPath: "transform.scale")
+        animation.toValue = 1.4
+        animation.duration = 1.2
+        animation.autoreverses = true
+        animation.repeatCount = Float.infinity
+        
+        shimmerLayer.add(animation, forKey: "shimmerAnimation")
     }
     
     fileprivate func animateCircle() {
@@ -68,14 +90,17 @@ class ViewController: UIViewController {
         basicAnimation.duration = 2
         basicAnimation.isRemovedOnCompletion = false
         basicAnimation.fillMode = kCAFillModeForwards
-        
         circleLayer.add(basicAnimation, forKey: "circleAnimation")
     }
     
-    let urlString = "http://cdn.baogiaothong.vn/files/nhung.nguyen/2017/01/19/ngoc_trinh-2_gvua-1128.jpg"
+    @objc private func handleTap() {
+//        animateCircle()
+        downloadFile()
+    }
     
+    let urlString = "http://cdn.baogiaothong.vn/files/nhung.nguyen/2017/01/19/ngoc_trinh-2_gvua-1128.jpg"
     fileprivate func downloadFile() {
-        percentageLabel.text = "0%"
+        percentageLabel.text = "Start"
         circleLayer.strokeEnd = 0
         
         let configuration = URLSessionConfiguration.default
@@ -86,11 +111,6 @@ class ViewController: UIViewController {
         }
         let dataTask = urlSession.downloadTask(with: url)
         dataTask.resume()
-    }
-    
-    @objc private func handleTap() {
-//        animateCircle()
-        downloadFile()
     }
 }
 
